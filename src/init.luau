@@ -1,5 +1,6 @@
 local fs = require("@lune/fs")
 local process = require("@lune/process")
+local serde = require("@lune/serde")
 
 local data_buffer = buffer.fromstring(fs.readFile(`samples/{process.args[1]}.header`))
 
@@ -23,7 +24,7 @@ local function parseHeader(): HHeader
 			bit32.band(bit32.rshift(signature_u32, 16), 0xFF),
 			bit32.rshift(signature_u32, 24)
 		),
-		string_size = buffer.readu8(data_buffer, 8),
+		string_size = buffer.readu16(data_buffer, 8),
 	}
 
 	return data
@@ -68,17 +69,14 @@ local function parseOffsets(header_data: HHeader): { StringOffsets }
 	return offsets
 end
 
-local function parseAll()
-    local header = parseHeader()
-    local IDs = parseIDs(header)
-    local offsets = parseOffsets(header)
-    local data = {}
-    
-    for i, ID in IDs do
-        data[ID] = parseString(offsets[i])
-    end
+local header = parseHeader()
+local offsets = parseOffsets(header)
 
-    return data
+local data = {}
+
+for i, ID in parseIDs(header) do
+	data[tostring(ID)] = parseString(offsets[i])
 end
 
-print(parseAll())
+print(data)
+fs.writeFile("result.json", serde.encode("json", data))
